@@ -1,63 +1,71 @@
-version: '2'
+version: "3.8"
+
 services:
-# MongoDB: https://hub.docker.com/_/mongo/
   mongodb:
-    image: mongo:5.0.13
+    image: "mongo:5.0.15"
     volumes:
-    - mongo_data:/data/db
-# Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/reference/7.10/docker.html
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
-    volumes:
-    - es_data:/usr/share/elasticsearch/data
+      - "mongodb_data:/data/db"
+    restart: "on-failure"
+
+  opensearch:
+    image: "opensearchproject/opensearch:2.4.1"
     environment:
-    - http.host=0.0.0.0
-    - transport.host=localhost
-    - network.host=0.0.0.0
-    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "bootstrap.memory_lock=true"
+      - "discovery.type=single-node"
+      - "action.auto_create_index=false"
+      - "plugins.security.ssl.http.enabled=false"
+      - "plugins.security.disabled=true"
     ulimits:
       memlock:
-        soft: -1
         hard: -1
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-# Graylog: https://hub.docker.com/r/graylog/graylog/
-  graylog:
-    image: graylog/graylog:5.0
+        soft: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
-    - graylog_data:/usr/share/graylog/data
-    environment:
-    # CHANGE ME (must be at least 16 characters)!
-    - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
-    # Password: admin
-    - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
-    - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
-    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 --  /docker-entrypoint.sh
-    links:
-    - mongodb:mongo
-    - elasticsearch
-    restart: always
+      - "os_data:/usr/share/opensearch/data"
+    restart: "on-failure"
+
+  graylog:
+    hostname: "server"
+    image: "${GRAYLOG_IMAGE:-graylog/graylog:5.0.5}"
     depends_on:
-    - mongodb
-    - elasticsearch
+      opensearch:
+        condition: "service_started"
+      mongodb:
+        condition: "service_started"
+    entrypoint: "/usr/bin/tini -- wait-for-it opensearch:9200 --  /docker-entrypoint.sh"
+    environment:
+      GRAYLOG_NODE_ID_FILE: "/usr/share/graylog/data/config/node-id"
+      GRAYLOG_PASSWORD_SECRET: "${GRAYLOG_PASSWORD_SECRET:?Please configure GRAYLOG_PASSWORD_SECRET in the .env file}"
+      GRAYLOG_ROOT_PASSWORD_SHA2: "${GRAYLOG_ROOT_PASSWORD_SHA2:?Please configure GRAYLOG_ROOT_PASSWORD_SHA2 in the .env file}"
+      GRAYLOG_HTTP_BIND_ADDRESS: "0.0.0.0:9000"
+      GRAYLOG_HTTP_EXTERNAL_URI: "http://localhost:9000/"
+      GRAYLOG_ELASTICSEARCH_HOSTS: "http://opensearch:9200"
+      GRAYLOG_MONGODB_URI: "mongodb://mongodb:27017/graylog"
     ports:
-    # Graylog web interface and REST API
-    - 9000:9000
-    # Syslog TCP
-    - 1514:1514
-    # Syslog UDP
-    #- 1514:1514/udp
-    # GELF TCP
-    #- 12201:12201
-    # GELF UDP
-    #- 12201:12201/udp
-# Volumes for persisting data, see https://docs.docker.com/engine/admin/volumes/volumes/
+    #- "5044:5044/tcp"   # Beats
+    #- "5140:5140/udp"   # Syslog
+    #- "5140:5140/tcp"   # Syslog
+    - "1514:1514/tcp"   # 5G Core Syslog
+    - "1514:1514/udp"   # 5G Core Syslog
+    #- "5555:5555/tcp"   # RAW TCP
+    #- "5555:5555/udp"   # RAW TCP
+    - "9000:9000/tcp"   # Server API
+    #- "12201:12201/tcp" # GELF TCP
+    #- "12201:12201/udp" # GELF UDP
+    #- "10000:10000/tcp" # Custom TCP port
+    #- "10000:10000/udp" # Custom UDP port
+    #- "13301:13301/tcp" # Forwarder data
+    #- "13302:13302/tcp" # Forwarder config
+    volumes:
+      - "graylog_data:/usr/share/graylog/data/data"
+      - "graylog_journal:/usr/share/graylog/data/journal"
+    restart: "on-failure"
+
 volumes:
-  mongo_data:
-    driver: local
-  es_data:
-    driver: local
+  mongodb_data:
+  os_data:
   graylog_data:
-    driver: local
+  graylog_journal:
