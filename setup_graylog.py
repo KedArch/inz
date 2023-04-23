@@ -69,10 +69,6 @@ HEADERS = {
   'X-Requested-By': 'cli',
 }
 
-def recurse(dictionary):
-    for k, v in dictionary:
-        import json
-
 def delete_ids(obj):
   if isinstance(obj, dict):
     for key in list(obj.keys()):
@@ -94,7 +90,6 @@ def setup(what):
       data = json.loads(data)
       if skip_ids:
         data = delete_ids(data)
-        data = json.dumps(data)
       file_api_endpoint = API_ENDPOINT\
         +str(file.parent.relative_to(basepath/"json"/what_one))
       response = requests.post(
