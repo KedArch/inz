@@ -1,0 +1,13 @@
+ {
+  "email": "5@g",
+  "first_name": "5",
+  "last_name": "g",
+  "password": "5gcore",
+  "permissions": [],
+  "roles": [
+      "Reader"
+  ],
+  "session_timeout_ms": 3600000,
+  "timezone": "Poland",
+  "username": "5g"
+}
