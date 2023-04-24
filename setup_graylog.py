@@ -109,7 +109,7 @@ def setup(what):
             sys.exit(67)
       else:
         print(f'Successfully set {file.stem}')
-    print(f"Successfully used all parts of element {what_one}")
+    print(f"Went through all parts of element {what_one}")
 
 if elements:
   decheck = set(detected_elements)
