@@ -84,6 +84,7 @@ def setup(what):
   for what_one in what:
     path = pathlib.Path(__file__).parent.resolve().joinpath("json/"+what_one)
     files = list(path.glob('**/*.json'))
+    print(f"Going through parts of element {what_one}")
     for file in files:
       with file.open(mode="r") as f:
         data = f.read()
@@ -99,7 +100,8 @@ def setup(what):
         auth=AUTH,
       )
       if response.status_code != 201:
-        print(f"Error occured when sending data of {file.stem}")
+        print("Error occured when sending data of "
+              f"{file.relative_to(basepath/'json')}")
         print(response.status_code, response.reason)
         if verbose:
             print(f"API endpoint: {file_api_endpoint}")
@@ -108,7 +110,7 @@ def setup(what):
             print("Stopping because of setup error")
             sys.exit(67)
       else:
-        print(f'Successfully set {file.stem}')
+        print(f"Successfully set up {file.relative_to(basepath/'json')}")
     print(f"Went through all parts of element {what_one}")
 
 if elements:
