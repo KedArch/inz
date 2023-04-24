@@ -80,6 +80,49 @@ def delete_ids(obj):
     for item in obj:
       delete_ids(item)
 
+def get(endpoint, file):
+  response = requests.get(
+    endpoint,
+    headers=HEADERS,
+    auth=AUTH,
+  )
+  if response.status_code != 200:
+    print("Error occured when fetching data of "
+          f"{file.relative_to(basepath/'json')}")
+    print(response.status_code, response.reason)
+    if verbose:
+      print(f"API endpoint: {endpoint}")
+    if not fail:
+      print("Stopping because of setup error")
+      sys.exit(67)
+    else:
+      print(f"Successfully fetched {file.relative_to(basepath/'json')}")
+    return response.json()
+
+def post(endpoint, data, file):
+  response = requests.post(
+    endpoint,
+    headers=HEADERS,
+    json=data,
+    auth=AUTH,
+  )
+  if response.status_code != 201:
+    print("Error occured when sending data of "
+          f"{file.relative_to(basepath/'json')}")
+    print(response.status_code, response.reason)
+    if verbose:
+      print(f"API endpoint: {endpoint}")
+      print(f"JSON: \n{data}")
+    if not fail:
+      print("Stopping because of setup error")
+      sys.exit(67)
+    else:
+      print(f"Successfully set up {file.relative_to(basepath/'json')}")
+
+def check(data, file):
+  for k,v in data:
+    pass
+
 def setup(what):
   for what_one in what:
     path = pathlib.Path(__file__).parent.resolve().joinpath("json/"+what_one)
@@ -93,24 +136,12 @@ def setup(what):
         data = delete_ids(data)
       file_api_endpoint = API_ENDPOINT\
         +str(file.parent.relative_to(basepath/"json"/what_one))
-      response = requests.post(
-        file_api_endpoint,
-        headers=HEADERS,
-        json=data,
-        auth=AUTH,
-      )
-      if response.status_code != 201:
-        print("Error occured when sending data of "
-              f"{file.relative_to(basepath/'json')}")
-        print(response.status_code, response.reason)
-        if verbose:
-            print(f"API endpoint: {file_api_endpoint}")
-            print(f"JSON: \n{data}")
-        if not fail:
-            print("Stopping because of setup error")
-            sys.exit(67)
+      get_data = get(file_api_endpoint, file)
+      err = check(get_data, file)
+      if not err:
+        post(file_api_endpoint, data, file)
       else:
-        print(f"Successfully set up {file.relative_to(basepath/'json')}")
+        print(f"Couldn't set {file.relative_to(basepath/'json')}")
     print(f"Went through all parts of element {what_one}")
 
 if elements:
