@@ -1,0 +1,13 @@
+{
+  "condition_type": "none",
+  "condition_value": "",
+  "converters": [],
+  "cursor_strategy": "copy",
+  "extractor_config": {
+    "regex_value": "[^\\[]*\\[([a-zA-Z]*)\\]"
+  },
+  "extractor_type": "regex",
+  "source_field": "message",
+  "target_field": "module",
+  "title": "Module"
+}
