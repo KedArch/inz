@@ -1,0 +1,13 @@
+{
+  "condition_type": "string",
+  "condition_value": "../",
+  "converters": [],
+  "cursor_strategy": "copy",
+  "extractor_config": {
+    "regex_value": "\\((.*:[0-9]*)\\)$"
+  },
+  "extractor_type": "regex",
+  "source_field": "message",
+  "target_field": "lib_file",
+  "title": "Library file location"
+}
