@@ -127,7 +127,7 @@ def get(endpoint, file):
     auth=AUTH,
   )
   if verbose:
-    print(f"API endpoint: {endpoint}")
+    print(f"GET API endpoint: {endpoint}")
     print("Response code:", response.status_code, response.reason)
     print(f"JSON received: \n{response.json() if response.text else None}")
   if response.status_code != 200:
@@ -145,7 +145,7 @@ def post(endpoint, file, data):
     auth=AUTH,
   )
   if verbose:
-    print(f"API endpoint: {endpoint}")
+    print(f"POST API endpoint: {endpoint}")
     print("Response code:", response.status_code, response.reason)
     print(f"JSON sent: \n{data}")
     print(f"JSON received: \n{response.json() if response.text else None}")
@@ -170,7 +170,7 @@ def delete(endpoint, file, idt):
       auth=AUTH,
     )
     if verbose:
-      print(f"API endpoint: {endpoint}")
+      print(f"DELETE API endpoint: {endpoint}")
       print("Response code:", response.status_code, response.reason)
       print(f"JSON received: \n{response.json() if response.text else None}")
     if response.status_code != 204:
