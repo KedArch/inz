@@ -80,24 +80,53 @@ def delete_ids(obj):
     for item in obj:
       delete_ids(item)
 
+def search_nested_dict(dictionary, search_value):
+  for key, value in dictionary.items():
+    if str(key) == search_value:
+      return True
+    if isinstance(value, dict):
+      if search_nested_dict(value, search_value):
+        return True
+  return False
+
+def get_file_dependants(root_dir, check_dict={}):
+  file_deps = {}
+  for file in pathlib.Path(root_dir).rglob("*.json"):
+    if search_nested_dict(check_dict, str(file)):
+      continue
+    dep_dir_name = file.stem
+    dep_dir = file.parent / dep_dir_name
+    if dep_dir.is_dir():
+      file_deps[file] = get_file_dependants(dep_dir, check_dict)
+    else:
+      file_deps[file] = None
+    check_dict = file_deps.copy()
+  return file_deps
+
+def check_title(data, file):
+  with file.open() as f:
+    filedata = json.loads(f.read())
+  for i in data[file.parent.name]:
+    if i.get("title", 0) == filedata.get("title", 1):
+      return True
+  return False
+
 def get(endpoint, file):
   response = requests.get(
     endpoint,
     headers=HEADERS,
     auth=AUTH,
   )
+  if verbose:
+    print(f"API endpoint: {endpoint}")
+    print("Response code:", response.status_code, response.reason)
+    print(f"JSON received: \n{response.json()}")
   if response.status_code != 200:
-    print("Error occured when fetching data of "
-          f"{file.relative_to(basepath/'json')}")
-    print(response.status_code, response.reason)
-    if verbose:
-      print(f"API endpoint: {endpoint}")
+    print(f"Fetch of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
-    else:
-      print(f"Successfully fetched {file.relative_to(basepath/'json')}")
-    return response.json()
+  return response.json()
 
 def post(endpoint, data, file):
   response = requests.post(
@@ -106,43 +135,81 @@ def post(endpoint, data, file):
     json=data,
     auth=AUTH,
   )
+  if verbose:
+    print(f"API endpoint: {endpoint}")
+    print("Response code:", response.status_code, response.reason)
+    print(f"JSON sent: \n{data}")
+    print(f"JSON received: \n{response.json()}")
   if response.status_code != 201:
-    print("Error occured when sending data of "
-          f"{file.relative_to(basepath/'json')}")
-    print(response.status_code, response.reason)
-    if verbose:
-      print(f"API endpoint: {endpoint}")
-      print(f"JSON: \n{data}")
+    print(f"Fetch of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
-    else:
-      print(f"Successfully set up {file.relative_to(basepath/'json')}")
+  rjson = response.json()
+  id = rjson.get("id", False)
+  if id:
+    return id
+  for key, value in rjson.items():
+    if key.endswith("id"):
+      return value
 
-def check(data, file):
-  for k,v in data:
-    pass
+def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
+  for file, deps in files.items():
+    print(f"--Start {file.relative_to(basepath/'json')}")
+    with file.open(mode="r") as f:
+      data = f.read()
+    data = json.loads(data)
+    if skip_ids:
+      data = delete_ids(data)
+    urlpath = file.parent.relative_to(basepath/'json'/what_one)
+    if id is False:
+      print("---Didn't get ID when supposed to.", end="")
+      if not fail:
+        print("\nStopping because of setup error.")
+        sys.exit(67)
+      else:
+        print(".. skipping")
+        print(f"--End {file.relative_to(basepath/'json')}")
+        continue
+    if id:
+      urlpath = pathlib.Path(str(urlpath).replace(f"/{replace}/", f"/{id}/"))
+      id = None
+    file_api_endpoint = API_ENDPOINT+str(urlpath)
+    get_data = get(file_api_endpoint, file)
+    err = get_data.get("type", None)
+    idn = False
+    if err is None:
+      err = check_title(get_data, file)
+      if not err:
+        idn = post(file_api_endpoint, data, file)
+        if idn is None and verbose:
+          print(f"---Couldn't check ID for {file.relative_to(basepath/'json')}")
+      else:
+        print(f"---Couldn't set {file.relative_to(basepath/'json')}, already "
+              "exists, skipping it with dependendants")
+        print(f"--End {file.relative_to(basepath/'json')}")
+        continue
+    else:
+      print(f"Couldn't set {file.relative_to(basepath/'json')}, fetch failed")
+      if not fail:
+        print("Stopping because of setup error")
+        sys.exit(67)
+    print(f"--End {file.relative_to(basepath/'json')}")
+    if deps is not None:
+      if idn:
+        do_what(deps, what_one, urlpath, idn, file.stem)
+      elif id is None:
+        do_what(deps, what_one, urlpath, None)
+      else:
+        do_what(deps, what_one, urlpath, False)
 
 def setup(what):
   for what_one in what:
     path = pathlib.Path(__file__).parent.resolve().joinpath("json/"+what_one)
-    files = list(path.glob('**/*.json'))
-    print(f"Going through parts of element {what_one}")
-    for file in files:
-      with file.open(mode="r") as f:
-        data = f.read()
-      data = json.loads(data)
-      if skip_ids:
-        data = delete_ids(data)
-      file_api_endpoint = API_ENDPOINT\
-        +str(file.parent.relative_to(basepath/"json"/what_one))
-      get_data = get(file_api_endpoint, file)
-      err = check(get_data, file)
-      if not err:
-        post(file_api_endpoint, data, file)
-      else:
-        print(f"Couldn't set {file.relative_to(basepath/'json')}")
-    print(f"Went through all parts of element {what_one}")
+    files = get_file_dependants(path)
+    print(f"-Start {what_one}")
+    do_what(files, what_one)
+    print(f"-End {what_one}")
 
 if elements:
   decheck = set(detected_elements)
