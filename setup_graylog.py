@@ -212,9 +212,7 @@ def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
                   f"{file.relative_to(basepath/'json')}")
         else:
           print(f"---Couldn't set {file.relative_to(basepath/'json')}, already "
-                "exists, skipping with dependants")
-          print(f"--End {file.relative_to(basepath/'json')}")
-          continue
+                "exists, trying dependants")
       else:
         print(f"---Couldn't set {file.relative_to(basepath/'json')}, fetch failed")
         if not fail:
@@ -222,8 +220,8 @@ def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
           sys.exit(67)
         continue
       if deps is not None:
-        if idn:
-          do_what(deps, what_one, urlpath, idn, file.stem)
+        if idt or idn:
+          do_what(deps, what_one, urlpath, idt if idt else idn, file.stem)
         elif id is None:
           do_what(deps, what_one, urlpath, None)
         else:
