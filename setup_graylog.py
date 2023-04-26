@@ -182,12 +182,6 @@ def delete(endpoint, file, idt):
 def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
   for file, deps in files.items():
     print(f"--Start {file.relative_to(basepath/'json')}")
-    with file.open(mode="r") as f:
-      data = f.read()
-    data = json.loads(data)
-    if skip_ids:
-      data = delete_ids(data)
-    urlpath = file.parent.relative_to(basepath/'json'/what_one)
     if id is False:
       print("---Didn't get ID when supposed to.", end="")
       if not fail:
@@ -197,9 +191,14 @@ def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
         print(".. skipping")
         print(f"--End {file.relative_to(basepath/'json')}")
         continue
+    with file.open(mode="r") as f:
+      data = f.read()
+    data = json.loads(data)
+    if skip_ids:
+      data = delete_ids(data)
+    urlpath = file.parent.relative_to(basepath/'json'/what_one)
     if id:
       urlpath = pathlib.Path(str(urlpath).replace(f"/{replace}/", f"/{id}/"))
-      id = None
     file_api_endpoint = API_ENDPOINT+str(urlpath)
     get_data = get(file_api_endpoint, file)
     idn = False
