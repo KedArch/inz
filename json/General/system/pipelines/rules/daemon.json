@@ -1,0 +1,5 @@
+{
+  "title": "Drop daemon info",
+  "description": "",
+  "source": "rule \"Drop daemon info\"\nwhen\n starts_with(to_string($message.message), \"Open5GS daemon\")\nthen\n drop_message();\nend"
+}
