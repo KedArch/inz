@@ -1,0 +1,23 @@
+{
+  "can_be_default": true,
+  "description": "5G Messages",
+  "field_type_refresh_interval": 5000,
+  "index_analyzer": "standard",
+  "index_optimization_disabled": false,
+  "index_optimization_max_num_segments": 1,
+  "index_prefix": "5g",
+  "replicas": 0,
+  "retention_strategy": {
+    "max_number_of_indices": 5,
+    "type": "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategyConfig"
+  },
+  "retention_strategy_class": "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy",
+  "rotation_strategy": {
+    "max_size": 1073741824,
+    "type": "org.graylog2.indexer.rotation.strategies.SizeBasedRotationStrategyConfig"
+  },
+  "rotation_strategy_class": "org.graylog2.indexer.rotation.strategies.SizeBasedRotationStrategy",
+  "shards": 4,
+  "title": "5G",
+  "writable": true
+}
