@@ -1,0 +1,5 @@
+{
+  "title": "Format repeated messages",
+  "description": "",
+  "source": "rule \"Format repeated messages\"\nwhen\n has_field(\"message\") && starts_with(to_string($message.message), \"message repeated\")\nthen\n let msg = to_string($message.message);\n let repeat = regex(\"^message repeated ([0-9]*)\", msg);\n let formatted_msg = regex_replace(\"^message repeated[^\\\\[]*\\\\[(.*)\\\\]\", msg, \"$1\");\n set_field(\"message\", formatted_msg);\n set_field(\"repeat\", repeat[\"0\"]);\nend"
+}
