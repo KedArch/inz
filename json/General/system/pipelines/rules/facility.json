@@ -1,0 +1,5 @@
+{
+  "title": "Drop message with facility field other than 'local3'",
+  "description": "",
+  "source": "rule \"Drop message with facility field other than 'local3'\"\nwhen\n !has_field(\"facility\") || $message.facility != \"local3\"\nthen\n drop_message();\nend"
+}
