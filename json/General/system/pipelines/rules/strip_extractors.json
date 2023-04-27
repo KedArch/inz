@@ -1,0 +1,5 @@
+{
+  "title": "Strip message parts stored with extractors",
+  "description": "",
+  "source": "rule \"Strip message parts stored with extractors\"\nwhen\n has_field(\"lib_file\") && has_field(\"log_timestamp\") && has_field(\"message_level\") && has_field(\"module\")\nthen\n let msg = to_string($message.message);\n let formatted_msg = regex_replace(\"[^\\\\]]* [A-Z]*: (.*)\\\\(.*\", msg, \"$1\");\n set_field(\"message\", formatted_msg);\nend"
+}
