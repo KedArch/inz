@@ -1,0 +1,5 @@
+{
+  "title": "Filter valid 5G core syslog",
+  "description": "",
+  "source": "pipeline \"Filter valid 5G core syslog\"\nstage 1 match pass\nrule \"Strip message parts stored with extractors\"\nstage 2 match pass\nrule \"Drop message with facility field other than 'local3'\"\nrule \"Drop daemon info\"\nstage 3 match pass\nrule \"Format repeated messages\"\nend"
+}
