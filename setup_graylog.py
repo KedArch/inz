@@ -232,24 +232,24 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
 
 def setup():
   lacking = []
+  todo = []
   path = pathlib.Path(__file__).parent.resolve().joinpath("json/")
   for what in elements:
     lack = True
     for dirp in path.iterdir():
       if str(dirp.name).startswith(what) and dirp.is_dir():
+        todo.append(dirp.name)
         lack = False
     if lack:
       lacking.append(what)
   if lacking:
     print("Couldn't find provided elements:\n"+"\n".join(lacking))
     sys.exit(66)
-  for what in elements:
-    for dirp in path.iterdir():
-      if str(dirp.name).startswith(what) and dirp.is_dir():
-        files = get_file_dependants(path)
-        print(f"-Start {what}")
-        do_what(files, dirp.name)
-        print(f"-End {what}")
+  for dirn in todo:
+    files = get_file_dependants(path/dirn)
+    print(f"-Start {dirn}")
+    do_what(files, dirn)
+    print(f"-End {dirn}")
 
 if __name__ == "__main__":
   setup()
