@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(
   formatter_class=argparse.RawDescriptionHelpFormatter,
   description="Graylog setup script via REST API.\n"
   "Elements are directories in json directory representing sets of API endpoints."
-  "\nParts are data sent to those API endpoints.",
+  "\nJSONs are data sent to those API endpoints.",
   epilog="Error codes: "
        "\n65 - unsupported interpreter version\n66 - invalid argumets"
        "\n67 - Graylog setup error")
@@ -24,7 +24,7 @@ parser.add_argument(
   help="element names")
 parser.add_argument(
   "-i", "--skip-id", dest="skip_id", action="store_true",
-  help="skip id in parts")
+  help="skip id in JSONs")
 parser.add_argument(
   "-l", "--list", dest="list", action="store_true",
   help="list detected elements")
