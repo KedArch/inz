@@ -179,7 +179,7 @@ def delete(endpoint, file, idt):
     print(f"---couldn't remove {file.relative_to(basepath/'json')}, "
           "it does not exist ")
 
-def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
+def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
   for file, deps in files.items():
     print(f"--Start {file.relative_to(basepath/'json')}")
     if id is False:
@@ -196,7 +196,7 @@ def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
     data = json.loads(data)
     if skip_ids:
       data = delete_ids(data)
-    urlpath = file.parent.relative_to(basepath/'json'/what_one)
+    urlpath = file.parent.relative_to(basepath/'json'/what)
     if id:
       urlpath = pathlib.Path(str(urlpath).replace(f"/{replace}/", f"/{id}/"))
     file_api_endpoint = API_ENDPOINT+str(urlpath)
@@ -221,28 +221,35 @@ def do_what(files, what_one, urlpath=pathlib.Path("/"), id=None, replace=""):
         continue
       if deps is not None:
         if idt or idn:
-          do_what(deps, what_one, urlpath, idt if idt else idn, file.stem)
+          do_what(deps, what, urlpath, idt if idt else idn, file.stem)
         elif id is None:
-          do_what(deps, what_one, urlpath, None)
+          do_what(deps, what, urlpath, None)
         else:
-          do_what(deps, what_one, urlpath, False)
+          do_what(deps, what, urlpath, False)
     else:
       delete(file_api_endpoint, file, idt)
     print(f"--End {file.relative_to(basepath/'json')}")
 
-def setup(what):
-  for what_one in what:
-    path = pathlib.Path(__file__).parent.resolve().joinpath("json/"+what_one)
-    files = get_file_dependants(path)
-    print(f"-Start {what_one}")
-    do_what(files, what_one)
-    print(f"-End {what_one}")
-
-if elements:
-  decheck = set(detected_elements)
-  echeck = set(elements)
-  diff = echeck.difference(decheck)
-  if len(diff) != 0:
-    print("Couldn't find provided elements:\n"+"\n".join(diff))
+def setup():
+  lacking = []
+  path = pathlib.Path(__file__).parent.resolve().joinpath("json/")
+  for what in elements:
+    lack = True
+    for dirp in path.iterdir():
+      if str(dirp.name).startswith(what) and dirp.is_dir():
+        lack = False
+    if lack:
+      lacking.append(what)
+  if lacking:
+    print("Couldn't find provided elements:\n"+"\n".join(lacking))
     sys.exit(66)
-  setup(elements)
+  for what in elements:
+    for dirp in path.iterdir():
+      if str(dirp.name).startswith(what) and dirp.is_dir():
+        files = get_file_dependants(path)
+        print(f"-Start {what}")
+        do_what(files, dirp.name)
+        print(f"-End {what}")
+
+if __name__ == "__main__":
+  setup()
