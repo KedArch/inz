@@ -18,9 +18,7 @@ parser = argparse.ArgumentParser(
        "\n65 - unsupported interpreter version\n66 - invalid argumets"
        "\n67 - Graylog setup error")
 parser.add_argument(
-  "-e", "--elements", dest="elements", nargs="*",
-  required=not {"-l", "--list"} &
-  set(sys.argv),
+  "elements", nargs="*",
   help="element names")
 parser.add_argument(
   "-i", "--skip-id", dest="skip_id", action="store_true",
@@ -252,6 +250,9 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace="", level=0
     print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
 
 def setup():
+  if not elements:
+    print("No elements specified, exiting...")
+    sys.exit(66)
   lacking = []
   todo = []
   path = pathlib.Path(__file__).parent.resolve().joinpath("json/")
