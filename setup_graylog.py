@@ -140,7 +140,7 @@ def check_title(data, file):
       return False, ""
   return None, ""
 
-def get(endpoint, file):
+def get(endpoint, file, level):
   response = requests.get(
     endpoint,
     headers=HEADERS,
@@ -151,13 +151,13 @@ def get(endpoint, file):
     print("Response code:", response.status_code, response.reason)
     print(f"JSON received: \n{response.json() if response.text else None}")
   if response.status_code != 200:
-    print(f"GET of {file.relative_to(basepath/'json')} failed")
+    print(f"{'-'*level}GET of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
   return response.json() if response.text else {}
 
-def post(endpoint, file, data):
+def post(endpoint, file, data, level):
   response = requests.post(
     endpoint,
     headers=HEADERS,
@@ -170,7 +170,7 @@ def post(endpoint, file, data):
     print(f"JSON sent: \n{data}")
     print(f"JSON received: \n{response.json() if response.text else None}")
   if response.status_code != 201:
-    print(f"POST of {file.relative_to(basepath/'json')} failed")
+    print(f"{'-'*level}POST of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
@@ -182,7 +182,7 @@ def post(endpoint, file, data):
     if key.endswith("id"):
       return value
 
-def delete(endpoint, file, idt):
+def delete(endpoint, file, idt, level):
   if idt:
     response = requests.delete(
       endpoint+f"/{idt}",
@@ -194,22 +194,22 @@ def delete(endpoint, file, idt):
       print("Response code:", response.status_code, response.reason)
       print(f"JSON received: \n{response.json() if response.text else None}")
     if response.status_code != 204:
-      print(f"---couldn't remove {file.relative_to(basepath/'json')}")
+      print(f"{'-'*level}couldn't remove {file.relative_to(basepath/'json')}")
   else:
-    print(f"---couldn't remove {file.relative_to(basepath/'json')}, "
+    print(f"{'-'*level}couldn't remove {file.relative_to(basepath/'json')}, "
           "it does not exist ")
 
-def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
+def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace="", level=0):
   for file, deps in files.items():
-    print(f"--Start {file.relative_to(basepath/'json')}")
+    print(f"{'-'*level}Start {file.relative_to(basepath/'json')}")
     if id is False:
-      print("---Didn't get ID when supposed to.", end="")
+      print(f"-{'-'*level}Didn't get ID when supposed to.", end="")
       if not fail:
         print("\nStopping because of setup error.")
         sys.exit(67)
       else:
         print(".. skipping")
-        print(f"--End {file.relative_to(basepath/'json')}")
+        print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
         continue
     with file.open(mode="r") as f:
       data = f.read()
@@ -220,21 +220,21 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
     if id:
       urlpath = pathlib.Path(str(urlpath).replace(f"/{replace}/", f"/{id}/"))
     file_api_endpoint = API_ENDPOINT+str(urlpath)
-    get_data = get(file_api_endpoint, file)
+    get_data = get(file_api_endpoint, file, level+1)
     idn = False
     err, idt = check_title(get_data, file)
     if not remove:
       if err is not None:
         if not err:
-          idn = post(file_api_endpoint, file, data)
+          idn = post(file_api_endpoint, file, data, level+1)
           if idn is None and verbose:
-            print(f"---Couldn't check ID for "
+            print(f"-{'-'*level}Couldn't check ID for "
                   f"{file.relative_to(basepath/'json')}")
         else:
-          print(f"---Couldn't set {file.relative_to(basepath/'json')}, already "
+          print(f"-{'-'*level}Couldn't set {file.relative_to(basepath/'json')}, already "
                 "exists, trying dependants")
       else:
-        print(f"---Couldn't set {file.relative_to(basepath/'json')}, "
+        print(f"-{'-'*level}Couldn't set {file.relative_to(basepath/'json')}, "
               "invalid response")
         if not fail:
           print("Stopping because of setup error")
@@ -242,14 +242,14 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
         continue
       if deps is not None:
         if idt or idn:
-          do_what(deps, what, urlpath, idt if idt else idn, file.stem)
+          do_what(deps, what, urlpath, idt if idt else idn, file.stem, level=level+1)
         elif id is None:
-          do_what(deps, what, urlpath, None)
+          do_what(deps, what, urlpath, None, level=level+1)
         else:
-          do_what(deps, what, urlpath, False)
+          do_what(deps, what, urlpath, False, level=level+1)
     else:
-      delete(file_api_endpoint, file, idt)
-    print(f"--End {file.relative_to(basepath/'json')}")
+      delete(file_api_endpoint, file, idt, level+1)
+    print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
 
 def setup():
   lacking = []
@@ -268,9 +268,9 @@ def setup():
     sys.exit(66)
   for dirn in todo:
     files = get_file_dependants(path/dirn)
-    print(f"-Start {dirn}")
-    do_what(files, dirn)
-    print(f"-End {dirn}")
+    print(f"Start {dirn}")
+    do_what(files, dirn, level=1)
+    print(f"End {dirn}")
 
 if __name__ == "__main__":
   setup()
