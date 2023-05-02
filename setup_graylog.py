@@ -151,7 +151,7 @@ def get(endpoint, file):
     print("Response code:", response.status_code, response.reason)
     print(f"JSON received: \n{response.json() if response.text else None}")
   if response.status_code != 200:
-    print(f"Fetch of {file.relative_to(basepath/'json')} failed")
+    print(f"GET of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
@@ -170,7 +170,7 @@ def post(endpoint, file, data):
     print(f"JSON sent: \n{data}")
     print(f"JSON received: \n{response.json() if response.text else None}")
   if response.status_code != 201:
-    print(f"Fetch of {file.relative_to(basepath/'json')} failed")
+    print(f"POST of {file.relative_to(basepath/'json')} failed")
     if not fail:
       print("Stopping because of setup error")
       sys.exit(67)
@@ -234,7 +234,8 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace=""):
           print(f"---Couldn't set {file.relative_to(basepath/'json')}, already "
                 "exists, trying dependants")
       else:
-        print(f"---Couldn't set {file.relative_to(basepath/'json')}, fetch failed")
+        print(f"---Couldn't set {file.relative_to(basepath/'json')}, "
+              "invalid response")
         if not fail:
           print("Stopping because of setup error")
           sys.exit(67)
