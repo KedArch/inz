@@ -108,17 +108,37 @@ def get_file_dependants(root_dir, check_dict={}):
     check_dict = file_deps.copy()
   return file_deps
 
+def check_one(data, filedata):
+  if data.get("title", "0") == filedata.get("title", "1"):
+    if data.get("id", ""):
+      return True, data["id"]
+    else:
+      return None, ""
+  if data.get("username", "0") == filedata.get("username", "1"):
+    return True, data["username"]
+  return False, ""
+
 def check_title(data, file):
   with file.open() as f:
     filedata = json.loads(f.read())
-  if file.parent.name not in data.keys():
-    return None, ""
-  for i in data[file.parent.name]:
-    if i.get("title", "0") == filedata.get("title", "1") or\
-        i.get("username", "0") == filedata.get("username", "1"):
-      return True, i.get("username", "") if i.get("username", False) \
-          else i.get("id", "")
-  return False, ""
+  if type(data) == type({}):
+    if file.parent.name in data.keys():
+      for i in data[file.parent.name]:
+        err, idt = check_one(i, filedata)
+        if err is not False:
+          return err, idt
+      else:
+        return False, ""
+    else:
+      return None, ""
+  if type(data) == type([]):
+    for i in data:
+      err, idt = check_one(i, filedata)
+      if err is not False:
+        return err, idt
+    else:
+      return False, ""
+  return None, ""
 
 def get(endpoint, file):
   response = requests.get(
