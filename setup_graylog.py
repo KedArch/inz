@@ -3,6 +3,7 @@ import sys
 import json
 import pathlib
 import argparse
+import datetime
 import requests
 
 if sys.version_info < (3, 8):
@@ -21,16 +22,13 @@ parser.add_argument(
   "elements", nargs="*",
   help="element names")
 parser.add_argument(
-  "-i", "--skip-id", dest="skip_id", action="store_true",
-  help="skip id in JSONs")
-parser.add_argument(
   "-l", "--list", dest="list", action="store_true",
   help="list detected elements")
 parser.add_argument(
   "-f", "--no-fail", dest="fail", action="store_true",
   help="do not fail on setup errors")
 parser.add_argument(
-  "-r", "--remove", dest="remove", action="store_true", default=False,
+  "-r", "--remove", dest="remove", action="store_true",
   help="remove resource if exists on remote (also dependants)")
 parser.add_argument(
   "-u", "--user", dest="user", default="admin",
@@ -54,7 +52,6 @@ if args.list:
   sys.exit(0)
 
 elements = args.elements
-skip_ids = args.skip_id
 user = args.user
 fail = args.fail
 passwd = args.passwd
@@ -72,17 +69,6 @@ HEADERS = {
   'X-Requested-By': 'cli',
 }
 
-def delete_ids(obj):
-  if isinstance(obj, dict):
-    for key in list(obj.keys()):
-      if key == 'id':
-        del obj[key]
-      else:
-        delete_ids(obj[key])
-  elif isinstance(obj, list):
-    for item in obj:
-      delete_ids(item)
-
 def search_nested_dict(dictionary, search_value):
   for key, value in dictionary.items():
     if str(key) == search_value:
@@ -91,6 +77,23 @@ def search_nested_dict(dictionary, search_value):
       if search_nested_dict(value, search_value):
         return True
   return False
+
+def replace_nested_dict(dictionary, key_list, replace,
+                        last_list=False, make_list=False, ind=0):
+  if not key_list[ind] in dictionary.keys():
+    return
+  if len(key_list)-1 == ind:
+    if last_list:
+      if make_list:
+        make_list = False
+        dictionary[key_list[ind]] = []
+      dictionary[key_list[ind]].append(replace)
+    else:
+      dictionary[key_list[ind]] = replace
+    return dictionary
+  dictionary[key_list[ind]] = replace_nested_dict(
+      dictionary[key_list[ind]], key_list, replace, last_list, ind=ind+1)
+  return dictionary
 
 def get_file_dependants(root_dir, check_dict={}):
   file_deps = {}
@@ -116,20 +119,21 @@ def check_one(data, filedata):
     return True, data["username"]
   return False, ""
 
-def check_title(data, file):
-  with file.open() as f:
-    filedata = json.loads(f.read())
-  if type(data) == type({}):
-    if file.parent.name in data.keys():
-      for i in data[file.parent.name]:
+def check_title(data, file, key):
+  if isinstance(file, type(pathlib.Path())):
+    with file.open() as f:
+      filedata = json.loads(f.read())
+  else:
+    filedata = file
+  if isinstance(data, type({})):
+    if key in data.keys():
+      for i in data[key]:
         err, idt = check_one(i, filedata)
         if err is not False:
           return err, idt
       else:
         return False, ""
-    else:
-      return None, ""
-  if type(data) == type([]):
+  elif isinstance(data, type([])):
     for i in data:
       err, idt = check_one(i, filedata)
       if err is not False:
@@ -137,6 +141,54 @@ def check_title(data, file):
     else:
       return False, ""
   return None, ""
+
+def date_setup(data):
+  setup = data["date_setup"]
+  del data["date_setup"]
+  if verbose:
+    print(f"data:\n{data}")
+    print(f"setup:\n{setup}")
+  if not isinstance(setup, type([])):
+    return
+  for i in setup:
+    now = datetime.datetime.utcnow()
+    now = now.strftime('%Y-%m-%dT%H:%M:%S.%f+00:00')
+    data = replace_nested_dict(data, (i,), now, False)
+    if data is None:
+      return
+  return data
+
+def id_setup_body(field, endpoint, title, data, file, level, last_list=False):
+  err, get_data = get(API_ENDPOINT+endpoint, file, level)
+  if err is not False:
+    return
+  err, idt = check_title(get_data, {"title": title},
+                         endpoint.split("/")[-1])
+  if not err:
+    return
+  data = replace_nested_dict(data, field, idt, last_list)
+  return data
+
+def id_setup(data, file, level):
+  setup = data["id_setup"]
+  del data["id_setup"]
+  if verbose:
+    print(f"data:\n{data}")
+    print(f"setup:\n{setup}")
+  for field, to_find in setup.items():
+    field = field.split("/")
+    if isinstance(to_find, type([])):
+      for i in to_find:
+        endpoint = list(i.keys())[0]
+        title = list(i.values())[0]
+        data = id_setup_body(field, endpoint, title, data, file, level, True)
+        if data is None:
+          return None
+    else:
+      endpoint = list(to_find.keys())[0]
+      title = list(to_find.values())[0]
+      data = id_setup_body(field, endpoint, title, data, file, level)
+  return data
 
 def get(endpoint, file, level):
   response = requests.get(
@@ -148,12 +200,17 @@ def get(endpoint, file, level):
     print(f"GET API endpoint: {endpoint}")
     print("Response code:", response.status_code, response.reason)
     print(f"JSON received: \n{response.json() if response.text else None}")
-  if response.status_code != 200:
-    print(f"{'-'*level}GET of {file.relative_to(basepath/'json')} failed")
+  err = False
+  if response.status_code == 404:
+    err = None
+  elif response.status_code != 200:
+    err = True
+    print(f"{'-'*level}GET of {file.relative_to(basepath/'json')} failed",
+          end="")
     if not fail:
-      print("Stopping because of setup error")
+      print("\nStopping because of setup error")
       sys.exit(67)
-  return response.json() if response.text else {}
+  return err, response.json() if response.text else {}
 
 def post(endpoint, file, data, level):
   response = requests.post(
@@ -167,10 +224,11 @@ def post(endpoint, file, data, level):
     print("Response code:", response.status_code, response.reason)
     print(f"JSON sent: \n{data}")
     print(f"JSON received: \n{response.json() if response.text else None}")
-  if response.status_code != 201:
-    print(f"{'-'*level}POST of {file.relative_to(basepath/'json')} failed")
+  if response.status_code != 201 and response.status_code != 200:
+    print(f"{'-'*level}POST of {file.relative_to(basepath/'json')} failed",
+          end="")
     if not fail:
-      print("Stopping because of setup error")
+      print("\nStopping because of setup error")
       sys.exit(67)
   rjson = response.json() if response.text else {}
   id = rjson.get("id", False)
@@ -193,6 +251,8 @@ def delete(endpoint, file, idt, level):
       print(f"JSON received: \n{response.json() if response.text else None}")
     if response.status_code != 204:
       print(f"{'-'*level}couldn't remove {file.relative_to(basepath/'json')}")
+    else:
+      print(f"{'-'*level}Removed {file.relative_to(basepath/'json')}")
   else:
     print(f"{'-'*level}couldn't remove {file.relative_to(basepath/'json')}, "
           "it does not exist ")
@@ -201,44 +261,94 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace="", level=0
   for file, deps in files.items():
     print(f"{'-'*level}Start {file.relative_to(basepath/'json')}")
     if id is False:
-      print(f"-{'-'*level}Didn't get ID when supposed to.", end="")
+      print(f"-{'-'*level}Didn't get ID when supposed to", end="")
       if not fail:
-        print("\nStopping because of setup error.")
+        print("\nStopping because of setup error")
         sys.exit(67)
       else:
-        print(".. skipping")
+        print("... skipping")
         print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
         continue
     with file.open(mode="r") as f:
       data = f.read()
     data = json.loads(data)
-    if skip_ids:
-      data = delete_ids(data)
+    if not isinstance(data, type({})):
+      print(f"-{'-'*level}only dict in JSONs are supported", end="")
+      if not fail:
+        print("\nStopping because of setup error")
+        sys.exit(67)
+      else:
+        print("... skipping")
+        print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
+        continue
     urlpath = file.parent.relative_to(basepath/'json'/what)
     if id:
       urlpath = pathlib.Path(str(urlpath).replace(f"/{replace}/", f"/{id}/"))
     file_api_endpoint = API_ENDPOINT+str(urlpath)
-    get_data = get(file_api_endpoint, file, level+1)
-    idn = False
-    err, idt = check_title(get_data, file)
+    err, get_data = get(file_api_endpoint, file, level+1)
+    if err:
+      if not fail:
+        print("\nStopping because of setup error")
+        sys.exit(67)
+      else:
+        print("... skipping")
+        print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
+        continue
+    if err is None:
+      idt = None
+      idn = None
+    else:
+      idn = False
+      err, idt = check_title(get_data, file, file.parent.name)
     if not remove:
-      if err is not None:
-        if not err:
+      stream_check = False
+      if isinstance(get_data, type({})):
+        if get_data.get("message", "")\
+            == "No pipeline connections with for stream to_stream":
+          stream_check = True
+      if err is not None or stream_check:
+        if err is False or stream_check:
+          if "date_setup" in data.keys():
+            data = date_setup(data)
+          if data is None:
+            print(f"-{'-'*level}Couldn't process date_setup", end="")
+            if not fail:
+              print("\nStopping because of setup error")
+              sys.exit(67)
+            else:
+              print("... skipping")
+              print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
+              continue
+          if "id_setup" in data.keys():
+            data = id_setup(data, file, level)
+          if data is None:
+            print(f"-{'-'*level}Couldn't process id_setup", end="")
+            if not fail:
+              print("\nStopping because of setup error")
+              sys.exit(67)
+            else:
+              print("... skipping")
+              print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
+              continue
           idn = post(file_api_endpoint, file, data, level+1)
-          if idn is None and verbose:
+          if idn is None:
             print(f"-{'-'*level}Couldn't check ID for "
                   f"{file.relative_to(basepath/'json')}")
         else:
           print(f"-{'-'*level}Couldn't set {file.relative_to(basepath/'json')}, already "
-                "exists, trying dependants")
+                "exists")
       else:
         print(f"-{'-'*level}Couldn't set {file.relative_to(basepath/'json')}, "
-              "invalid response")
+              "invalid response", end="")
         if not fail:
-          print("Stopping because of setup error")
+          print("\nStopping because of setup error")
           sys.exit(67)
-        continue
+        else:
+          print("... skipping")
+          print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
+          continue
       if deps is not None:
+        print(f"-{'-'*level}Trying dependants")
         if idt or idn:
           do_what(deps, what, urlpath, idt if idt else idn, file.stem, level=level+1)
         elif id is None:
@@ -246,7 +356,11 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace="", level=0
         else:
           do_what(deps, what, urlpath, False, level=level+1)
     else:
-      delete(file_api_endpoint, file, idt, level+1)
+      if not idt:
+        print(f"-{'-'*level}Couldn't check ID for "
+              f"{file.relative_to(basepath/'json')}")
+      else:
+        delete(file_api_endpoint, file, idt, level+1)
     print(f"{'-'*level}End {file.relative_to(basepath/'json')}")
 
 def setup():
@@ -267,7 +381,10 @@ def setup():
   if lacking:
     print("Couldn't find provided elements:\n"+"\n".join(lacking))
     sys.exit(66)
-  todo.sort()
+  if remove:
+    todo.sort(reverse=True)
+  else:
+    todo.sort()
   for dirn in todo:
     files = get_file_dependants(path/dirn)
     print(f"Start {dirn}")
