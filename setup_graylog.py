@@ -224,7 +224,7 @@ def post(endpoint, file, data, level):
     print("Response code:", response.status_code, response.reason)
     print(f"JSON sent: \n{data}")
     print(f"JSON received: \n{response.json() if response.text else None}")
-  if response.status_code != 201 and response.status_code != 200:
+  if response.status_code > 299 or response.status_code < 200:
     print(f"{'-'*level}POST of {file.relative_to(basepath/'json')} failed",
           end="")
     if not fail:
@@ -334,6 +334,8 @@ def do_what(files, what, urlpath=pathlib.Path("/"), id=None, replace="", level=0
           if idn is None:
             print(f"-{'-'*level}Couldn't check ID for "
                   f"{file.relative_to(basepath/'json')}")
+          if idn is not None and file.parent.name == "streams":
+            post(file_api_endpoint+"/"+str(idn)+"/resume", file, None, level+1)
         else:
           print(f"-{'-'*level}Couldn't set {file.relative_to(basepath/'json')}, already "
                 "exists")
