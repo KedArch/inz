@@ -1,0 +1,18 @@
+{
+  "title": "5G Syslog UDP",
+  "type": "org.graylog2.inputs.syslog.udp.SyslogUDPInput",
+  "configuration": {
+    "allow_override_date": true,
+    "bind_address": "0.0.0.0",
+    "charset_name": "UTF-8",
+    "expand_structured_data": false,
+    "force_rdns": false,
+    "number_worker_threads": 4,
+    "override_source": null,
+    "port": 1507,
+    "recv_buffer_size": 262144,
+    "store_full_message": false
+  },
+  "global": true,
+  "node": null
+}
