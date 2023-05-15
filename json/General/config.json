@@ -1,0 +1,81 @@
+{
+  "configs": {
+    "index_set": {
+      "endpoint": "system/indices/index_sets",
+      "deleteable": false,
+      "add_timestamp": [
+        "creation_date"
+      ]
+    },
+    "stream": {
+      "endpoint": "streams",
+      "file_fetch_replace": {
+        "index_set_id": {
+          "endpoint": "system/indices/index_sets",
+          "search_key": "index_sets/ /id",
+          "search_conditions": {
+            "title": "5G messages"
+          }
+        }
+      }
+    },
+    "pipeline_rules": {
+      "is_dir": true,
+      "endpoint": "system/pipelines/rule"
+    },
+    "pipeline": {
+      "endpoint": "system/pipelines/pipeline"
+    },
+    "inputs": {
+      "is_dir": true,
+      "endpoint": "system/inputs"
+    },
+    "extractors-tcp": {
+      "is_dir": true,
+      "endpoint": "system/inputs/id/extractors",
+      "endpoint_fetch_replace": {
+        "id": {
+          "endpoint": "system/inputs",
+          "search_key": "inputs/ /id",
+          "search_conditions": {
+            "title": "5G Syslog TCP"
+          }
+        }
+      }
+    },
+    "extractors-udp": {
+      "is_dir": true,
+      "endpoint": "system/inputs/id/extractors",
+      "endpoint_fetch_replace": {
+        "id": {
+          "endpoint": "system/inputs",
+          "search_key": "inputs/ /id",
+          "search_conditions": {
+            "title": "5G Syslog UDP"
+          }
+        }
+      }
+    },
+    "pipeline_connections": {
+      "endpoint": "system/pipelines/connections/to_stream",
+      "deleteable": false,
+      "file_fetch_replace": {
+        "stream_id": {
+          "endpoint": "streams",
+          "search_key": "streams/ /id",
+          "search_conditions": {
+            "title": "5G messages"
+          }
+        },
+        "pipeline_ids": {
+          "is_list": true,
+          "endpoint": "system/pipelines/pipeline",
+          "search_key": " /id",
+          "search_conditions": {
+            "title": "Filter valid 5G syslog"
+          }
+        }
+      }
+    }
+  }
+}

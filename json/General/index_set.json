@@ -20,8 +20,5 @@
   "shards": 4,
   "title": "5G messages",
   "writable": true,
-  "creation_date": "",
-  "date_setup": [
-    "creation_date"
-  ]
+  "creation_date": ""
 }

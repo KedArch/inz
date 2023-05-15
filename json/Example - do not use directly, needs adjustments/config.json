@@ -1,0 +1,40 @@
+{
+  "depends_on": [
+    "something"
+  ],
+  "configs": {
+    "entry - file name, automatically adds .json if it does not contain it": {
+      "is_dir - use when you must send multiple configs to the same endpoint, will use every .json it finds in 'entry' dir, default false": true,
+      "method": "POST or PUT, default POST",
+      "deleteable - for POST, if can be deleted, default true": false
+      "file_identifier - field from JSON for identification when removing, default title": "title",
+      "endpoint_identifier": "id",
+      "get_location - required if different from 'last_endpoint_string_after_slash/ - space for list": "somewhere",
+      "endpoint": "where/to/request",
+      "endpoint_fetch_replace": {
+        "to - element to replace in endpoint by value from GET request": {
+          "endpoint": "where/to/request",
+          "search_key": "response/ /id",
+          "search_conditions": {
+            "title": "title - element with value in list identifying"
+          }
+        }
+      },
+      "file_get_replace": {
+        "title - element to replace in file value from GET request": {
+          "endpoint": "where/in/file",
+          "search_key": "response/ /id",
+          "search_conditions": {
+            "title": "title - element with value in list identifying"
+          }
+        }
+      },
+      "file_env_replace": {
+        "where/to/replace": "USER - env variable replacing value in json"
+      },
+      "add_timestamp - add timestamp to selected fields": [
+        "field"
+      ]
+    }
+  }
+}

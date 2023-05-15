@@ -1,0 +1,33 @@
+{
+  "depends_on": [
+    "General"
+  ],
+  "configs": {
+    "extractors-tcp": {
+      "is_dir": true,
+      "endpoint": "system/inputs/id/extractors",
+      "endpoint_fetch_replace": {
+        "id": {
+          "endpoint": "system/inputs",
+          "search_key": "inputs/ /id",
+          "search_conditions": {
+            "title": "5G Syslog TCP"
+          }
+        }
+      }
+    },
+    "extractors-udp": {
+      "is_dir": true,
+      "endpoint": "system/inputs/id/extractors",
+      "endpoint_fetch_replace": {
+        "id": {
+          "endpoint": "system/inputs",
+          "search_key": "inputs/ /id",
+          "search_conditions": {
+            "title": "5G Syslog UDP"
+          }
+        }
+      }
+    }
+  }
+}
