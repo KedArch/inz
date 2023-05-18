@@ -4,6 +4,7 @@
   ],
   "configs": {
     "extractors-tcp": {
+      "location": "extractors",
       "is_dir": true,
       "endpoint": "system/inputs/id/extractors",
       "endpoint_fetch_replace": {
@@ -17,6 +18,7 @@
       }
     },
     "extractors-udp": {
+      "location": "extractors",
       "is_dir": true,
       "endpoint": "system/inputs/id/extractors",
       "endpoint_fetch_replace": {

@@ -3,20 +3,20 @@
     "something"
   ],
   "configs": {
-    "entry - file name, automatically adds .json if it does not contain it": {
-      "is_dir - use when you must send multiple configs to the same endpoint, will use every .json it finds in 'entry' dir, default false": true,
+    "entry": {
+      "location - when empty send no json, otherwise use send json file (possibly modified by other options), also appends .json if value lacks it and is_dir is not set to true": "filename",
+      "is_dir - use when you must send multiple configs to the same endpoint, will use every .json it finds in location dir instead, default false": true,
       "method": "POST or PUT, default POST",
-      "deleteable - for POST, if can be deleted, default true": false
-      "file_identifier - field from JSON for identification when removing, default title": "title",
-      "endpoint_identifier": "id",
-      "get_location - required if different from 'last_endpoint_string_after_slash/ - space for list": "somewhere",
+      "deleteable - for POST, if can be deleted, default true": false,
+      "check_if_exists - normally there is a check with GET if entry exist, set to false to disable it": true,
+      "identifier - field from JSON for identification in GET response, default title": "title",
       "endpoint": "where/to/request",
       "endpoint_fetch_replace": {
         "to - element to replace in endpoint by value from GET request": {
           "endpoint": "where/to/request",
           "search_key": "response/ /id",
           "search_conditions": {
-            "title": "title - element with value in list identifying"
+            "title - element with value in list identifying": "title"
           }
         }
       },
@@ -25,7 +25,7 @@
           "endpoint": "where/in/file",
           "search_key": "response/ /id",
           "search_conditions": {
-            "title": "title - element with value in list identifying"
+            "title - element with value in list identifying": "title"
           }
         }
       },

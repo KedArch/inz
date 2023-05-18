@@ -126,11 +126,12 @@ def add_timestamp(data, setup):
     data = replace_nested_dict(data, i.split("/"), now)
   return data
 
-def verbose_request(endpoint, response, response_type, data=None):
+def verbose_request(endpoint, response, response_type, settings, data=None):
   print(f"{response_type} API endpoint: {API_ENDPOINT+endpoint}")
   print("Response code:", response.status_code, response.reason)
   print(f"JSON sent: \n{data}")
   print(f"JSON received: \n{response.json() if response.text else None}")
+  print(f"JSON settings: \n{settings}")
 
 def get(file, settings, dirn, entry, important=True):
   code = settings.get("code", 200)
@@ -142,17 +143,17 @@ def get(file, settings, dirn, entry, important=True):
     auth=AUTH,
   )
   if verbose > 1:
-    verbose_request(settings.get("endpoint"), response, "GET")
+    verbose_request(settings.get("endpoint"), response, "GET", settings)
   err = False
   if response.status_code not in code:
     if verbose == 1:
-      verbose_request(settings.get("endpoint"), response, "GET")
-    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-          " couldn't process GET")
+      verbose_request(settings.get("endpoint"), response, "GET", settings)
+    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+          "couldn't process GET")
     if fail or important:
       print("Stopping because of Graylog setup error")
       sys.exit(67)
-    print("Skipping...")
+    print("Skipping GET...")
     err = True
   return response.json() if response.text else {}, err
 
@@ -167,15 +168,17 @@ def put(file, settings, data, dirn, entry):
     auth=AUTH,
   )
   if verbose > 1:
-    verbose_request(settings.get("endpoint"), response, "PUT", data)
+    verbose_request(settings.get("endpoint"), response, "PUT", settings, data)
   if response.status_code not in code:
     if verbose == 1:
-      verbose_request(settings.get("endpoint"), response, "PUT", data)
-    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-          " couldn't process PUT")
+      verbose_request(settings.get("endpoint"), response, "PUT", settings, data)
+    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+          "couldn't process PUT")
     if fail:
       print("Stopping because of Graylog setup error")
       sys.exit(67)
+    else:
+      print("Skipping PUT...")
   else:
     print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
           " PUT ended successfully")
@@ -192,17 +195,18 @@ def post(file, settings, data, dirn, entry):
     auth=AUTH,
   )
   if verbose > 1:
-    verbose_request(settings.get("endpoint"), response, "POST", data)
+    verbose_request(settings.get("endpoint"), response, "POST", settings, data)
   if response.status_code not in code:
     if verbose == 1:
-      verbose_request(settings.get("endpoint"), response, "POST", data)
-    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-          " couldn't process POST")
+      verbose_request(settings.get("endpoint"), response, "POST", settings,
+                      data)
+    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+          "couldn't process POST")
     if fail:
       print("Stopping because of Graylog setup error")
       sys.exit(67)
     else:
-      print("Skipping...")
+      print("Skipping POST...")
   else:
     print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
           " POST ended successfully")
@@ -217,27 +221,27 @@ def delete(file, settings, idt, dirn, entry):
       auth=AUTH,
     )
     if verbose > 1:
-      verbose_request(settings.get("endpoint"), response, "DELETE")
+      verbose_request(settings.get("endpoint")+f"/{idt}", response, "DELETE", settings)
     if response.status_code in code:
-      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-            " DELETE successful")
+      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+            "DELETE successful")
     elif response.status_code == 404:
       if verbose == 1:
-        verbose_request(settings.get("endpoint"), response, "DELETE")
-      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-            " couldn't request DELETE, endpoint does not exist")
+        verbose_request(settings.get("endpoint")+f"/{idt}", response, "DELETE", settings)
+      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+            "couldn't DELETE, endpoint does not exist")
     else:
       if verbose == 1:
-        verbose_request(settings.get("endpoint"), response, "DELETE")
-      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-            " couldn't process DELETE")
+        verbose_request(settings.get("endpoint")+f"/{idt}", response, "DELETE", settings)
+      print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+            "couldn't process DELETE")
       if fail:
         print("Stopping because of Graylog setup error")
         sys.exit(67)
     return response.json() if response.text else {}
   else:
-    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-          " couldn't request DELETE, endpoint does not exist")
+    print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+          "couldn't DELETE, endpoint does not exist")
 
 def fetch_replace(file, settings, data, dirn, entry):
   if not data:
@@ -272,8 +276,8 @@ def fetch_replace(file, settings, data, dirn, entry):
       if temp is None:
         if verbose > 1:
           print("Replaced data:", data)
-        print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-              " couldn't do file_fetch_replace "
+        print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+              "couldn't do file_fetch_replace "
               "Stopping because of config error")
         sys.exit(67)
       data = temp
@@ -291,8 +295,8 @@ def env_replace(file, settings, data, dirn, entry):
       if temp is None:
         if verbose > 1:
           print("Replaced data:", data)
-        print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-              " couldn't do file_env_replace "
+        print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+              "couldn't do file_env_replace "
               "Stopping because of config error")
         sys.exit(67)
       data = temp
@@ -310,18 +314,20 @@ def process_dir(dirn):
   for entry, settings in entries:
     todo_files = []
     print(f"Start {dirn}:{entry}")
-    if settings.get("is_dir", False):
-      if not (elementdir/entry).is_dir:
-        print(f"{dirn}:{entry} is not directory as stated in config file!"
+    location = settings.get("location", "NO_FILE")
+    if settings.get("is_dir", False) and location != "NO_FILE":
+      if not (elementdir/location).is_dir:
+        print(f"{dirn}:{entry}:{location} is not directory "
+              "as stated in config file! \n"
               "Stopping because of config error")
         sys.exit(67)
       else:
-        for file in (elementdir/entry).glob("*.json"):
+        for file in (elementdir/location).glob("*.json"):
           if not file.is_dir():
             todo_files.append(file)
     else:
-      file = elementdir/entry
-      if not str(file).endswith(".json"):
+      file = elementdir/location
+      if not str(file).endswith(".json") and location != "NO_FILE":
         file = pathlib.Path(str(file)+".json")
       todo_files = [file]
     for file in todo_files:
@@ -337,94 +343,122 @@ def process_dir(dirn):
       print(f"Start {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
       file_settings = copy.deepcopy(settings)
       try:
+        if not file_settings.get("deleteable", True) and remove:
+          print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+                "cannot be deleted as stated in file")
+          print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
+          continue
         if file_settings.get("endpoint_fetch_replace"):
           file_settings = fetch_replace(file, file_settings, None, dirn, entry)
           if file_settings is None:
             print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
                   " endpoint fetch replacement not found.")
             if remove:
-              print("Skipping...")
+              print("Skipping DELETE...")
               print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
               continue
             else:
               print("Stopping because of config error")
               sys.exit(67)
-        with file.open() as f:
-          data = f.read()
-          data = json.loads(data)
-        if not remove:
-          if file_settings.get("file_fetch_replace"):
-            data = fetch_replace(file, file_settings, data, dirn, entry)
+        id = None
+        if location != "NO_FILE":
+          with file.open() as f:
+            data = f.read()
+            data = json.loads(data)
+          if not remove:
+            if file_settings.get("file_fetch_replace"):
+              data = fetch_replace(file, file_settings, data, dirn, entry)
+              if data is None:
+                print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+                      "file fetch replacement not found.")
+                if remove:
+                  print("Skipping DELETE...")
+                  print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
+                  continue
+                else:
+                  print("Stopping because of config error")
+                  sys.exit(67)
+            if file_settings.get("file_env_replace"):
+              data = env_replace(file, file_settings, data, dirn, entry)
+            if file_settings.get("add_timestamp"):
+              data = add_timestamp(data, file_settings.get("add_timestamp"))
             if data is None:
-              print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                    " file fetch replacement not found.")
-              if remove:
-                print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-                continue
-              else:
-                print("Stopping because of config error")
-                sys.exit(67)
-          if file_settings.get("file_env_replace"):
-            data = env_replace(file, file_settings, data, dirn, entry)
-          if file_settings.get("add_timestamp"):
-            data = add_timestamp(data, file_settings.get("add_timestamp"))
-          if data is None:
-            raise TypeError
+              raise TypeError
+          if file_settings.get("check_if_exists", True) or remove:
+            where = file_settings.get("endpoint").split("/")[-1]
+            search = file_settings.get("identifier", "title")
+            search_value = data[search]
+            get_data, err = get(file, file_settings, dirn, entry, False)
+            if not err:
+              if type(get_data) == type([]):
+                err = True
+                index = find_list_index(get_data, {search: search_value})
+                if index is not None:
+                  err = False
+                  get_data = get_data[index]
+              if not err:
+                if type(get_data) == type({}):
+                  err = True
+                  if get_data.get(where):
+                    get_data = get_data.get(where)
+                    err = False
+                  elif get_data.get("id"):
+                    get_data = get_data.get("id")
+                    err = False
+                if not err:
+                  if type(get_data) not in (type([]), type({})):
+                    id = get_data
+                  else:
+                    if type(get_data) == type([]):
+                      err = True
+                      index = find_list_index(get_data, {search: search_value})
+                      if index is not None:
+                        get_data = get_data[index]
+                        err = False
+                      if not err:
+                        id = check_dict(get_data, "id")
+        else:
+          data = None
       except TypeError:
-          print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                " is invalid! Check config and associated JSONs. "
-                "Stopping because of config error")
-          sys.exit(67)
+        print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+              "is invalid! Check config and associated JSONs."
+              "Stopping because of config error")
+        sys.exit(67)
       if remove and file_settings.get("method", "POST") == "POST":
-        try:
-          if not file_settings.get("deleteable", True):
-            print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                  " cannot be deleted as stated in file")
-            print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-            continue
-          where = file_settings.get("endpoint").split("/")[-1]
-          search = file_settings.get("file_identifier", "title")
-          search_value = data[search]
-          get_data, err = get(file, file_settings, dirn, entry, False)
-          if err:
-            print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-            continue
-          if type(get_data) == type([]):
-            index = find_list_index(get_data, {search: search_value})
-            if index is None:
-              print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                    " couldn't be found in fetched data. Skipping...")
-              print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-              continue
-            get_data = get_data[index]
-          if get_data.get(where):
-            get_data = get_data.get(where)
-          if type(get_data) == type([]):
-            index = find_list_index(get_data, {search: search_value})
-            if index is None:
-              print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                    " couldn't be found in fetched data. Skipping...")
-              print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-              continue
-            get_data = get_data[index]
-          id = check_dict(get_data, file_settings.get(
-            "endpoint_identifier", "id"))
-          if id is None:
-            print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                  " couldn't be found in fetched data. Skipping...")
-            print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
-            continue
-          delete(file, settings, id, dirn, entry)
-        except TypeError:
-          print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}"
-                " is invalid! Check config and associated JSONs."
-                "Stopping because of config error")
-          sys.exit(67)
+        if id is None:
+          print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+                "couldn't be found in fetched data.\n"
+                "Skipping DELETE...")
+          print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
+          continue
+        delete(file, file_settings, id, dirn, entry)
       else:
         if file_settings.get("method", "POST") == "PUT":
-          put(file, file_settings, data, dirn, entry)
+          if id is not None:
+            put(file, file_settings, data, dirn, entry)
+          else:
+            print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+                  "found in fetched data. PUT failed.")
+            if fail:
+              print("Stopping because of Graylog setup error")
+              sys.exit(67)
+            else:
+              print("Skipping PUT...")
+              print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
+              continue
         else:
-          post(file, file_settings, data, dirn, entry)
+          if id is None:
+            post(file, file_settings, data, dirn, entry)
+          else:
+            print(f"{dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)} "
+                  "found in fetched data. POST failed.")
+            if fail:
+              print("Stopping because of Graylog setup error")
+              sys.exit(67)
+            else:
+              print("Skipping POST...")
+              print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
+              continue
       print(f"End {dirn}:{entry}:{file.relative_to(basepath/'json'/dirn)}")
     print(f"End {dirn}:{entry}")
 
