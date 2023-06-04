@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
+from datetime import datetime, timedelta
 
 lookup = {}
+last_check = datetime.now()
 
 app = FastAPI()
 
+def clear_old_entries():
+  global last_check
+  last_check = datetime.now()
+  for k, v in lookup.copy().items():
+    if datetime.now() - v["timestamp"] > timedelta(minutes=15):
+      del lookup[k]
+
 @app.get("/")
-async def root(request: Request, key: str):
+async def root(request: Request, key: str, background_tasks: BackgroundTasks):
+  global lookup
+  if datetime.now() - last_check > timedelta(minutes=15):
+    background_tasks.add_task(clear_old_entries)
   delimeter = request.headers.get("actually-post-with-delimeter", "")
   delete = request.headers.get("actually-delete", None)
   if delete:
@@ -30,6 +42,7 @@ async def root(request: Request, key: str):
       lookup[key]["list"] = keylist
     else:
       lookup[key]["value"] = keylist[0]
+    lookup[key]["timestamp"] = datetime.now()
     return lookup.get(key)
 
 if __name__ == "__main__":
