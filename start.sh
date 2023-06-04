@@ -15,4 +15,5 @@ if [ "$0" = "$BASH_SOURCE" ]; then
     printf "Didn't supply root element names\n"
     exit 2
   fi
+  ./lookup_server.py
 fi
